@@ -2,15 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background-color: #0f0f0f;
-  color: #fff;
+/* Scrollbar customization */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0f0f0f;
+}
+::-webkit-scrollbar-thumb {
+  background: #ff4d8b;
+  border-radius: 20px;
 }
 
+/* Neon title effect */
 .neon-title {
-  background: linear-gradient(to right, #ff0050, #ff4ecd, #ff0050);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  font-weight: bold;
-  text-shadow: 0 0 8px #ff0050aa;
+  color: #ff4d8b;
+  text-shadow: 0 0 5px #ff4d8b, 0 0 10px #ff4d8b, 0 0 20px #ff4d8b;
 }

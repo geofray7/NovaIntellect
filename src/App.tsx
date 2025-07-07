@@ -1,11 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import {
-  FaMicrophone,
-  FaPaperPlane,
-  FaDownload,
-  FaVolumeUp,
-  FaRedo,
-} from "react-icons/fa";
+import { FaMicrophone, FaPaperPlane, FaDownload, FaVolumeUp, FaRedo } from "react-icons/fa";
 import { motion } from "framer-motion";
 
 const SYSTEM_TONES = {
@@ -48,7 +42,7 @@ function App() {
     const userMessage: Message = { role: "user", content: input };
     const updatedMessages = memory
       ? [...messages, userMessage]
-      : [messages[0], userMessage];
+      : messages.filter(msg => msg.role === "system").concat(userMessage);
 
     setMessages(updatedMessages);
     setInput("");
@@ -60,30 +54,30 @@ function App() {
     setLoading(false);
   };
 
-  const getAIResponse = async (conversationHistory: Message[]) => {
+  const getAIResponse = async (history: Message[]) => {
     const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+    if (!apiKey) {
+      return "⚠️ API Error: No auth credentials found";
+    }
 
     const baseMessages: Message[] = [
       { role: "system", content: SYSTEM_TONES[tone] },
-      ...conversationHistory.filter((msg) => msg.role !== "system"),
+      ...history.filter((m) => m.role !== "system"),
     ];
 
     try {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
-          "HTTP-Referer": "http://localhost:5173",
-          "X-Title": "NovaIntellect",
         },
         body: JSON.stringify({
           model: "mistralai/mistral-7b-instruct",
           messages: baseMessages,
         }),
       });
-
-      const data = await response.json();
+      const data = await res.json();
       if (data.choices?.[0]?.message) {
         return data.choices[0].message.content.trim();
       } else if (data.error) {
@@ -91,8 +85,8 @@ function App() {
       } else {
         return "⚠️ Unexpected response from AI.";
       }
-    } catch (error) {
-      console.error("API call failed:", error);
+    } catch (err) {
+      console.error(err);
       return "⚠️ Could not connect to AI.";
     }
   };
@@ -101,40 +95,35 @@ function App() {
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("Speech recognition not supported.");
-      return;
+      return alert("Speech recognition not supported in this browser");
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = "en-US";
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setInput(transcript);
-    };
-    recognition.onerror = (event: any) => {
-      alert("Mic error: " + event.error);
-    };
-    recognition.start();
+    const r = new SpeechRecognition();
+    r.lang = "en-US";
+    r.onresult = (e: any) => setInput(e.results[0][0].transcript);
+    r.onerror = (e: any) => alert("Mic error: " + e.error);
+    r.start();
   };
 
   const handleDownload = () => {
     const content = messages
-      .map((msg) => `${msg.role === "user" ? "You" : "NovaIntellect"}: ${msg.content}`)
+      .map((m) => `${m.role === "user" ? "You" : "NovaIntellect"}: ${m.content}`)
       .join("\n\n");
     const blob = new Blob([content], { type: "text/plain" });
-    const url = window.URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = "chat-history.txt";
     a.click();
-    window.URL.revokeObjectURL(url);
+    URL.revokeObjectURL(url);
   };
 
   const rewritePrompt = async (msg: string) => {
     const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+    if (!apiKey) return alert("No API key");
 
     try {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -145,41 +134,34 @@ function App() {
           messages: [
             {
               role: "system",
-              content:
-                "You are an assistant that improves and rephrases user prompts to be clearer and more effective.",
+              content: "Rephrase the user prompt to be more clear and effective.",
             },
             { role: "user", content: msg },
           ],
         }),
       });
-      const data = await response.json();
+      const data = await res.json();
       if (data.choices?.[0]?.message?.content) {
         setInput(data.choices[0].message.content.trim());
       } else {
-        alert("Error rewriting prompt.");
+        alert("Error rewriting prompt");
       }
-    } catch (error) {
-      alert("Network error while rewriting.");
+    } catch {
+      alert("Network error while rewriting");
     }
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0f0f0f] text-white">
-      {/* Sticky Header */}
       <div className="sticky top-0 z-50 bg-[#0f0f0f] px-4 py-4 shadow-md">
-        <motion.h1
-          className="text-4xl text-center mb-4 neon-title"
-          initial={{ opacity: 0, y: -30 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
+        <motion.h1 className="text-4xl text-center mb-4 neon-title">
           NovaIntellect 🧠
         </motion.h1>
-
         <div className="flex flex-wrap justify-center gap-4 mb-2">
           <select
             className="bg-[#222] px-4 py-2 rounded text-sm"
             value={tone}
-            onChange={(e) => setTone(e.target.value as keyof typeof SYSTEM_TONES)}
+            onChange={(e) => setTone(e.target.value as any)}
           >
             {Object.keys(SYSTEM_TONES).map((t) => (
               <option key={t} value={t}>
@@ -187,16 +169,14 @@ function App() {
               </option>
             ))}
           </select>
-
           <button
             onClick={() => setMemory(!memory)}
-            className={`px-4 py-2 rounded-full text-sm font-medium shadow-md ${
+            className={`px-4 py-2 rounded-full text-sm shadow-md ${
               memory ? "bg-green-600" : "bg-gray-600"
             }`}
           >
             {memory ? "Memory ON" : "Memory OFF"}
           </button>
-
           <button
             onClick={handleDownload}
             className="flex items-center gap-2 bg-pink-600 hover:bg-pink-700 px-4 py-2 rounded-full text-sm shadow-md"
@@ -206,11 +186,10 @@ function App() {
         </div>
       </div>
 
-      {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto max-w-3xl w-full mx-auto space-y-4 scrollbar-thin pb-4 px-4">
-        {messages.map((msg, idx) => (
+        {messages.map((msg, i) => (
           <motion.div
-            key={idx}
+            key={i}
             className={`relative max-w-[80%] px-4 py-3 rounded-2xl shadow-md ${
               msg.role === "user"
                 ? "bg-[#141414] self-end ml-auto text-white border border-pink-600"
@@ -218,13 +197,11 @@ function App() {
             }`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.03 }}
+            transition={{ delay: i * 0.03 }}
           >
-            <p
-              className={`text-xs font-semibold mb-1 ${
-                msg.role === "user" ? "text-pink-400 text-right" : "text-pink-500"
-              }`}
-            >
+            <p className={`text-xs font-semibold mb-1 ${
+              msg.role === "user" ? "text-pink-400 text-right" : "text-pink-500"
+            }`}>
               {msg.role === "user" ? "You" : "NovaIntellect"}
             </p>
             <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
@@ -261,8 +238,7 @@ function App() {
         <div ref={endRef} />
       </div>
 
-      {/* Input Form */}
-      <form onSubmit={handleSubmit} className="flex gap-2 max-w-3xl w-full mx-auto mt-4 px-4">
+      <form onSubmit={handleSubmit} className="flex gap-2 max-w-3xl w-full mx-auto mt-4 px-4 pb-4">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
