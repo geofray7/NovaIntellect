@@ -2,20 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Scrollbar customization */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f0f0f;
+  background: #1a1a1a;
 }
 ::-webkit-scrollbar-thumb {
-  background: #ff4d8b;
-  border-radius: 20px;
+  background-color: #6b21a8; /* purple scrollbar */
+  border-radius: 8px;
 }
 
-/* Neon title effect */
-.neon-title {
-  color: #ff4d8b;
-  text-shadow: 0 0 5px #ff4d8b, 0 0 10px #ff4d8b, 0 0 20px #ff4d8b;
+/* Fancy animations */
+@layer utilities {
+  .fade-in {
+    animation: fadeIn 0.3s ease-in-out forwards;
+  }
+
+  .slide-up {
+    animation: slideUp 0.4s ease-out forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
 }
